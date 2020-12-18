@@ -9,6 +9,7 @@ import { GLTFLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders
 import Ornament from '/ornament.js';
 import Tree from '/tree.js';
 import Light from '/light.js';
+import { Data, pushData, uploadBinary, downloadBinary } from '/database.js';
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.001, 1000);
 const renderer = new THREE.WebGLRenderer();
@@ -68,10 +69,19 @@ const params = {
     shape: 'Circle',
     undo: undoOrnament,
     delete: deleteOrnament,
-    export: exportOrnaments,
+    export: function() {
+        exportOrnaments(false);
+    },
     import: function() {
         document.getElementById('file-loader').click();
     },
+    name: '',
+    upload: function() {
+        exportOrnaments(true);
+    },
+    download: function() {
+        downloadBinary(`${params.name}.glb`);
+    }
 };
 
 const gui = new GUI();
@@ -81,8 +91,11 @@ gui.add(params, 'shape', ['Circle', 'Cube']).name('Ornament Shape').onChange(tra
 gui.add(params, 'undo').name('Undo Ornament');
 gui.add(params, 'delete').name('Clear All Ornaments');
 const folder1 = gui.addFolder('Export/Import');
+folder1.add(params, 'name').name('Name');
 folder1.add(params, 'export').name('Export (.glb)');
 folder1.add(params, 'import').name('Import (.glb/.gltf)');
+folder1.add(params, 'upload').name('Publish Tree');
+folder1.add(params, 'download').name('Import from name');
 
 //RAYCAST OBJECTS
 let raycastObjects = [];
@@ -295,14 +308,19 @@ const exporter = new GLTFExporter();
 const link = document.createElement('a');
 link.style.display = 'none';
 document.body.appendChild(link);
-function exportOrnaments() {
+function exportOrnaments(publish) {
     exporter.parse(ornamentArray, result => {
         if (result instanceof ArrayBuffer) {
-            link.href = URL.createObjectURL(new Blob([result], { type: 'application/octet-stream' }));
-            link.download = 'ornaments.glb';
-            link.click();
+            if (publish && params.name != '') {
+                pushData(new Data(params.name));
+                uploadBinary(new Blob([result], { type: 'application/octet-stream' }), params.name);
+            } else if (!publish && params.name != '') {
+                link.href = URL.createObjectURL(new Blob([result], { type: 'application/octet-stream' }));
+                link.download = `${params.name}.glb`;
+                link.click();
+            }
         }
-    }, { binary: true });
+    }, {binary: true});
 }
 
 //EVENT LISTENERS
@@ -315,6 +333,18 @@ window.addEventListener('touchend', onTouchEnd, false);
 //IMPORT SCENE
 const loader = new GLTFLoader();
 const fileLoader = document.getElementById('file-loader');
+
+function importObjects(directory) {
+    loader.load(directory, gltf => {
+        addObjects(gltf.scene);
+    },
+    xhr => {
+        console.log(`${(xhr.loaded/xhr.total*100)}% loaded`);
+    },
+    err => {
+        console.log(`Error: ${err}`);
+    });
+}
 
 function addObjects(group) {
     group.children.forEach(child => {
@@ -350,3 +380,5 @@ fileLoader.addEventListener('change', event => {
 window.addEventListener('resize', onWindowResize, false);
 
 animate();
+
+export { importObjects };
