@@ -7,8 +7,8 @@ import { GLTFExporter } from 'https://unpkg.com/three@0.123.0/examples/jsm/expor
 import { GLTFLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/GLTFLoader.js'
 
 import Ornament from '/ornament.js';
-import Tree from '/tree.js';
-import Light from '/light.js';
+import { environment, lights } from '/scene.js';
+import { particles, maxRange, minRange } from '/snow.js';
 import { Data, pushData, uploadBinary, downloadBinary } from '/database.js';
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.001, 1000);
@@ -67,119 +67,51 @@ const params = {
     radius: 3,
     color: 0xff0000,
     shape: 'Circle',
+    name: '',
     undo: undoOrnament,
     delete: deleteOrnament,
-    export: function() {
-        exportOrnaments(false);
-    },
-    import: function() {
-        document.getElementById('file-loader').click();
-    },
-    name: '',
-    upload: function() {
-        exportOrnaments(true);
-    },
-    download: function() {
-        downloadBinary(`${params.name}.glb`);
+    export: () => { exportOrnaments(false) },
+    import: () => { document.getElementById('file-loader').click() },
+    download: () => { downloadBinary(`${params.name}.glb`) },
+    publish: () => {
+        const publisher = document.getElementById('container');
+        if (publisher.style.display === 'none') {
+            publisher.style.display = 'block';
+            canvas.style.display = 'none';
+        } else {
+            publisher.style.display = 'none';
+            canvas.style.display = 'block';
+        }
     }
 };
 
 const gui = new GUI();
-gui.add(params, 'radius', 1, 10, 0.1).name('Ornament Radius').onChange(tracerUpdate).addResizeHandle;
-gui.addColor(params, 'color').name('Ornament Color');
-gui.add(params, 'shape', ['Circle', 'Cube']).name('Ornament Shape').onChange(tracerUpdate);
-gui.add(params, 'undo').name('Undo Ornament');
-gui.add(params, 'delete').name('Clear All Ornaments');
-const folder1 = gui.addFolder('Export/Import');
+gui.add(params, 'radius', 1, 10, 0.1).name('Radius').onChange(tracerUpdate).addResizeHandle;
+gui.addColor(params, 'color').name('Color');
+gui.add(params, 'shape', ['Circle', 'Cube']).name('Shape').onChange(tracerUpdate);
+gui.add(params, 'undo').name('Undo');
+gui.add(params, 'delete').name('Clear All');
+
+const folder1 = gui.addFolder('Export/Import File');
 folder1.add(params, 'name').name('Name');
 folder1.add(params, 'export').name('Export (.glb)');
 folder1.add(params, 'import').name('Import (.glb/.gltf)');
-folder1.add(params, 'upload').name('Publish Tree');
-folder1.add(params, 'download').name('Import from name');
 
-//RAYCAST OBJECTS
+const folder2 = gui.addFolder('Publish Tree');
+folder2.add(params, 'publish').name('Publish Tree');
+folder2.add(params, 'name').name('Name');
+folder2.add(params, 'download').name('Download Tree');
+
+//SETUP SCENE, LIGHTS, AND SNOW
 let raycastObjects = [];
 
-//MAKE THE TREE
-const tree = new Tree();
-raycastObjects.push(tree.leaves, tree.trunk, tree.ground);
-scene.add(tree.leaves, tree.trunk, tree.ground);
-
-//ADD LIGHT
-const light = new Light();
-scene.add(light.lights);
-
+scene.add(lights);
+scene.add(environment);
 scene.traverse(object => {
     if (object.isMesh) {
-        object.castShadow = true;
-        object.receiveShadow = true;
+        raycastObjects.push(object);
     }
 });
-
-//ADD SNOW SOURCE => https://codepen.io/tksiiii/pen/MRjWzv
-//I copied and pasted the snow code!! Sorry!
-const particleAmt = 10000;
-const maxRange = 1000
-const minRange = maxRange / 2;
-
-const drawRadialGradation = (ctx, canvasRadius, canvasW, canvasH) => {
-    ctx.save();
-    const gradient = ctx.createRadialGradient(canvasRadius, canvasRadius, 0, canvasRadius, canvasRadius, canvasRadius);
-    gradient.addColorStop(0, 'rgba(255,255,255,1.0)');
-    gradient.addColorStop(0.5, 'rgba(255,255,255,0.5)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.restore();
-}
-
-const getTexture = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const diameter = 64.0;
-    canvas.width = diameter;
-    canvas.height = diameter;
-    const canvasRadius = diameter / 2;
-
-    drawRadialGradation(ctx, canvasRadius, canvas.width, canvas.height);
-
-    const texture = new THREE.Texture(canvas);
-    texture.type = THREE.FloatType;
-    texture.needsUpdate = true;
-    return texture;
-}
-
-const pointGeometry = new THREE.Geometry();
-for (let i = 0; i < particleAmt; i++) {
-    const x = Math.floor(Math.random() * maxRange - minRange);
-    const y = Math.floor(Math.random() * maxRange - minRange);
-    const z = Math.floor(Math.random() * maxRange - minRange);
-    const particle = new THREE.Vector3(x , y, z);
-    pointGeometry.vertices.push(particle);
-}
-
-const pointMaterial = new THREE.PointsMaterial({
-    size: 4,
-    color: 0xffffff,
-    vertexColors: false,
-    map: getTexture(),
-    transparent: true,
-    fog: true,
-    depthWrite: false
-})
-
-const velocities = [];
-for (let i = 0; i < particleAmt; i++) {
-    const x = Math.floor(Math.random() * 6 - 3) * 0.1;
-    const y = Math.floor(Math.random() * 10 + 3) * - 0.05;
-    const z = Math.floor(Math.random() * 6 - 3) * 0.1;
-    const particle = new THREE.Vector3(x, y, z);
-    velocities.push(particle);
-}
-
-const particles = new THREE.Points(pointGeometry, pointMaterial);
-particles.geometry.velocities = velocities;
 scene.add(particles);
 
 //EVENT FUNCTIONS
@@ -271,12 +203,8 @@ function animate() {
     posArr.forEach((vertex, i) => {
         const velocity = velArr[i];
 
-        const x = i * 3;
-        const y = i * 3 + 1;
-        const z = i * 3 + 2;
-
-        const velX = Math.sin(1 * 0.001 * velocity.x) * 0.1;
-        const velZ = Math.cos(1 * 0.0015 * velocity.z) * 0.1;
+        const velX = Math.sin(100 * 0.001 * velocity.x) * 0.1;
+        const velZ = Math.cos(100 * 0.0015 * velocity.z) * 0.1;
 
         vertex.x += velX;
         vertex.y += velocity.y;
@@ -285,6 +213,13 @@ function animate() {
         if (vertex.y < -minRange) {
             vertex.y = minRange;
         }
+
+        if (vertex.x > minRange || vertex.x < -minRange) {
+            vertex.x = Math.floor(Math.random() * maxRange - minRange);
+        }
+        if (vertex.z > minRange || vertex.z < -minRange) {
+            vertex.z = Math.floor(Math.random() * maxRange - minRange);
+        } 
     })
 
     particles.geometry.verticesNeedUpdate = true;
@@ -308,12 +243,21 @@ const exporter = new GLTFExporter();
 const link = document.createElement('a');
 link.style.display = 'none';
 document.body.appendChild(link);
+
+const form = document.getElementById('form');
+const name = document.getElementById('name');
+
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    exportOrnaments(true);
+});
+
 function exportOrnaments(publish) {
     exporter.parse(ornamentArray, result => {
         if (result instanceof ArrayBuffer) {
-            if (publish && params.name != '') {
-                pushData(new Data(params.name));
-                uploadBinary(new Blob([result], { type: 'application/octet-stream' }), params.name);
+            if (publish) {
+                pushData(new Data(name.value));
+                uploadBinary(new Blob([result], { type: 'application/octet-stream' }), name.value);
             } else if (!publish && params.name != '') {
                 link.href = URL.createObjectURL(new Blob([result], { type: 'application/octet-stream' }));
                 link.download = `${params.name}.glb`;
@@ -324,11 +268,14 @@ function exportOrnaments(publish) {
 }
 
 //EVENT LISTENERS
-window.addEventListener('mousemove', onMouseMove, false);
+
+const canvas = document.getElementsByTagName('canvas')[0];
+
+canvas.addEventListener('mousemove', onMouseMove, false);
 renderer.domElement.addEventListener('click', onMouseClick, false);
 
-window.addEventListener('touchstart', onTouchStart, {passive: false});
-window.addEventListener('touchend', onTouchEnd, false);
+canvas.addEventListener('touchstart', onTouchStart, {passive: false});
+canvas.addEventListener('touchend', onTouchEnd, false);
 
 //IMPORT SCENE
 const loader = new GLTFLoader();

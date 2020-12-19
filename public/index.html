@@ -3,8 +3,11 @@
     <head>
         <meta charset="UTF-8"/>
         <meta name="description" content="Decorate your own christmas tree! Made with Three.js!"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+        <!-- PURE.CSS -->
+        <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.3/build/pure-min.css">
+        <link rel="stylesheet" href="	https://unpkg.com/purecss@2.0.3/build/forms-min.css">
         <title>Christmas Tree Decorator</title>
         <style> 
         body { 
@@ -19,13 +22,29 @@
         </style>
     </head>
     <body>
+        <div id="container" style="display:none;top:75%;transform:translateY(75%);">
+            <form id="form" class="pure-form pure-form-aligned">
+                <fieldset>
+                    <div class="pure-control-group">
+                        <label for="aligned-name">Name: </label>
+                        <input class="aligned-name" type="text" id="name" placeholder="Name" required=""></input>
+                        <span class="pure-form-message-inline" id="warning"></span>
+                    </div>
+                    <div class="pure-controls">
+                        <button class="pure-button pure-button-primary">Publish</button>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+        <script type="module" src="/publish.js"></script>
+
+        <!-- LOAD DECORATOR -->
         <script type="module" src="/index.js"></script>
         <input id="file-loader" type="file" accept=".glb,.gltf" style="display:none" />
-
+        
         <!-- FIREBASE SDK -->
         <!-- The core Firebase JS SDK is always required and must be listed first -->
         <script src="/__/firebase/8.2.0/firebase-app.js"></script>
-        
         <!-- TODO: Add SDKs for Firebase products that you want to use
              https://firebase.google.com/docs/web/setup#available-libraries -->
         <script src="/__/firebase/8.2.0/firebase-analytics.js"></script>

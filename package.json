@@ -1,7 +1,7 @@
 {
   "name": "christmas-tree",
   "version": "1.0.0",
-  "description": "",
+  "description": "I made a little christmas tree decorator with the [Three.js](https://threejs.org/) library hosted by Google's [Firebase](https://firebase.google.com/) hosting.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,5 +12,15 @@
   "dependencies": {
     "firebase": "^8.2.1",
     "three": "^0.123.0"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dignojrteogalbo/christmas-tree.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/dignojrteogalbo/christmas-tree/issues"
+  },
+  "homepage": "https://github.com/dignojrteogalbo/christmas-tree#readme"
 }
