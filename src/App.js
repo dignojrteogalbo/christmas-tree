@@ -12,10 +12,15 @@ import { particles, maxRange, minRange } from './snow.js';
 import './App.css';
 
 export default class App extends React.Component {
+  constructor() {
+    super();
+    this.state = { publish: false };
+  }
+
   componentDidMount() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.001, 1000);
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.physicallyCorrectLights = true;
@@ -74,8 +79,12 @@ export default class App extends React.Component {
       undo: undoOrnament,
       delete: deleteOrnament,
       export: exportOrnaments,
-      import: () => { document.getElementById('file-loader').click() }
-    };
+      import: () => { document.getElementById('file-loader').click() },
+      publish: () => { 
+        saveImage();
+        toggleVisible();
+      } 
+    }
 
     const gui = new GUI({autoPlace: false});
     this.mount.appendChild(gui.domElement);
@@ -91,6 +100,16 @@ export default class App extends React.Component {
     folder1.add(params, 'name').name('Name');
     folder1.add(params, 'export').name('Export (.glb)');
     folder1.add(params, 'import').name('Import (.glb/.gltf)');
+
+    gui.add(params, 'publish').name('Publish Tree');
+
+    const toggleVisible = () => {
+      if (this.mount.style.display !== 'none') {
+        this.mount.style.display = 'none';
+      } else {
+        this.mount.style.display = 'block';
+      }
+    }
 
     //SETUP SCENE, LIGHTS, AND SNOW
     let raycastObjects = [];
@@ -228,23 +247,43 @@ export default class App extends React.Component {
       renderer.render(scene, camera);
     }
 
+    //SCREENSHOT
+    function saveImage() {
+      let img = document.createElement('img');
+      img.id = 'snapshot';
+      const strMime = 'image/jpeg';
+      try {
+        tracer.visible = false;
+        renderer.render(scene, camera);
+        let imgData = renderer.domElement.toDataURL(strMime);
+        img.src = imgData;
+        document.getElementById('frame').appendChild(img);
+        tracer.visible = true;
+      } catch(e) {
+        console.log(e);
+        return;
+      }
+    }
+
     //EXPORT SCENE
     const exporter = new GLTFExporter();
-    const link = document.createElement('a');
-    link.style.display = 'none';
 
     const onprogress = document.createElement('div');
     onprogress.id = 'onprogress';
     this.mount.appendChild(onprogress);
-    this.mount.appendChild(link);
 
     function exportOrnaments() {
+      let link = document.createElement('a');
       exporter.parse(ornamentArray, result => {
         if (result instanceof ArrayBuffer) {
           if (params.name !== '') {
+            document.body.appendChild(link);
+
             link.href = URL.createObjectURL(new Blob([result], { type: 'application/octet-stream' }));
             link.download = `${params.name}.glb`;
             link.click();
+
+            document.body.removeChild(link);
           }
         }
       }, { binary: true });
